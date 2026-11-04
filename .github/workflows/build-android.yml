@@ -87,18 +87,18 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 -d > android/app/kairos.keystore
           cat >> android/app/build.gradle <<'GRADLE'
 
-android {
-    signingConfigs {
-        release {
-            storeFile file("kairos.keystore")
-            storePassword System.getenv("KEYSTORE_PASSWORD")
-            keyAlias System.getenv("KEY_ALIAS")
-            keyPassword System.getenv("KEYSTORE_PASSWORD")
-        }
-    }
-}
-android.buildTypes.release.signingConfig = android.signingConfigs.release
-GRADLE
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file("kairos.keystore")
+                      storePassword System.getenv("KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("KEY_ALIAS")
+                      keyPassword System.getenv("KEYSTORE_PASSWORD")
+                  }
+              }
+          }
+          android.buildTypes.release.signingConfig = android.signingConfigs.release
+          GRADLE
           echo "con_firma=true" >> "$GITHUB_ENV"
           echo "Firma release configurada."
 
