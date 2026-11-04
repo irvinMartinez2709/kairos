@@ -2,6 +2,8 @@ import type { Actividad, Config, Datos, Idioma, Tema } from "../types";
 import { aportaLabor, aportaVoluntariado } from "../types";
 import { fechaLocal, formatearHoraHHMM, formatoHM } from "./horas";
 import { minutosDeRegistro, resumenActividades, totales } from "./estadisticas";
+import { hexARgb } from "./colores";
+import type { jsPDF } from "jspdf";
 
 function esc(texto: string): string {
   return texto
@@ -27,7 +29,7 @@ function fechaLarga(iso: string, idioma: Idioma): string {
   });
 }
 
-const TEXTOS = {
+export const TEXTOS = {
   es: {
     titulo: "Reporte de horas",
     voluntariado: "Voluntariado",
@@ -50,7 +52,6 @@ const TEXTOS = {
     actividades: "Actividades",
     lema: "Aprovecha el momento, transforma tu entorno.",
     generado: "Generado el",
-    imprimir: "Usa “Guardar como PDF” en el diálogo de impresión.",
   },
   en: {
     titulo: "Hours report",
@@ -74,7 +75,6 @@ const TEXTOS = {
     actividades: "Activities",
     lema: "Seize the moment, transform your surroundings.",
     generado: "Generated on",
-    imprimir: "Use “Save as PDF” in the print dialog.",
   },
 };
 
@@ -138,9 +138,8 @@ export function generarReporte({
       return `<tr>
         <td class="c fecha">${fechaLarga(r.fecha, idioma)}</td>
         <td>${esc(a ? a.nombre : "—")}</td>
-        <td class="c">${formatearHoraHHMM(r.llegada, config.formatoHora, idioma)}</td>
-        <td class="c">${formatearHoraHHMM(r.salida, config.formatoHora, idioma)}</td>
-        <td class="d">${formatoHM(minutosDeRegistro(r), idioma)}</td>
+        <td class="c hora">${formatearHoraHHMM(r.llegada, config.formatoHora, idioma)}</td>
+        <td class="c hora">${formatearHoraHHMM(r.salida, config.formatoHora, idioma)}</td>        <td class="d">${formatoHM(minutosDeRegistro(r), idioma)}</td>
         <td class="nota">${esc(r.notas || "")}</td>
       </tr>`;
     })
@@ -158,6 +157,7 @@ export function generarReporte({
     font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: #1b2a3a;
     margin: 0;
+    padding: 16px;
     font-size: 10.5pt;
     line-height: 1.45;
   }
@@ -180,13 +180,24 @@ export function generarReporte({
   tbody tr:nth-child(even) td { background: #f6f9fc; }
   .c { text-align: center; }
   .fecha { white-space: nowrap; }
+  .hora { white-space: nowrap; }
   .d { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .nota { color: #5a6b80; font-size: 8.2pt; }
+  .nota { color: #5a6b80; font-size: 8.2pt; overflow-wrap: anywhere; }
   .punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
   .vacio { color: #8494a6; font-style: italic; font-size: 9pt; }
   .pie { margin-top: 20px; border-top: 1px solid #dfe7f0; padding-top: 8px; font-size: 8pt; color: #8494a6; display: flex; justify-content: space-between; }
   .nota-final { margin-top: 10px; font-size: 8pt; color: #8494a6; }
-  @media print { .no-imprimir { display: none; } }
+
+  /* Pantallas angostas (vista previa dentro de la app) */
+  @media (max-width: 760px) {
+    body { font-size: 9.5pt; padding: 12px; }
+    .marca { flex-direction: column; gap: 4px; }
+    .marca h1 { font-size: 17pt; }
+    .marca .meta { text-align: left; }
+    .resumen { flex-direction: column; }
+    .fecha { white-space: normal; }
+    th, td { font-size: 8.5pt; padding: 4px 5px; }
+  }
 </style>
 </head>
 <body>
@@ -241,24 +252,293 @@ export function generarReporte({
     <span>Kairós · ${t.lema}</span>
     <span>${t.generado} ${esc(hoy)}</span>
   </div>
-  <div class="no-imprimir" style="margin-top:16px;text-align:center;color:#8494a6;font-size:9pt">
-    ${t.imprimir}
-  </div>
-  <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 350); };</script>
 </body>
 </html>`;
 }
 
-export function abrirReporte(opciones: {
+/** Texto apto para las fuentes WinAnsi de jsPDF (acentos latino-1 ok). */
+function sanear(s: string): string {
+  return s
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\u2026/g, "...")
+    .replace(/[^\x09\x0A\x0D\x20-\xFF]/g, "");
+}
+
+/**
+ * Genera el reporte como PDF real (jsPDF + autotable) sin abrir el navegador:
+ * el componente de vista previa lo muestra y ofrece Descargar / Cerrar.
+ */
+export async function generarPDFReporte({
+  datos,
+  config,
+  idioma,
+}: {
   datos: Datos;
   config: Config;
   tema: Tema;
   idioma: Idioma;
-}): void {
-  const html = generarReporte(opciones);
-  const ventana = window.open("", "_blank");
-  if (!ventana) return;
-  ventana.document.open();
-  ventana.document.write(html);
-  ventana.document.close();
+}): Promise<Blob> {
+  const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+
+  const t = TEXTOS[idioma] || TEXTOS.es;
+  const resumen = totales(datos);
+  const filas = resumenActividades(datos);
+  const porActividad = new Map(filas.map((f) => [f.actividad.id, f]));
+  const actividades: Actividad[] = datos.actividades;
+  const registrosOrdenados = [...datos.registros].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const mapaAct = new Map(actividades.map((a) => [a.id, a]));
+  const hoy = new Date().toLocaleDateString(idioma === "en" ? "en-US" : "es-MX", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  const NAVY: [number, number, number] = [18, 60, 99];
+  const GRIS: [number, number, number] = [107, 124, 144];
+  const TINTA: [number, number, number] = [27, 42, 58];
+  const MARGEN = 14;
+  const ANCHO = 210 - MARGEN * 2;
+  const PIE = 285;
+  const LIMITE = PIE - 14;
+
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+  const encabezado = (g: jsPDF) => {
+    g.setFont("helvetica", "bold");
+    g.setFontSize(8);
+    g.setTextColor(...GRIS);
+    g.text("Kairós", MARGEN, 8);
+    const der = sanear(t.titulo);
+    g.text(der, 210 - MARGEN - g.getTextWidth(der), 8);
+    g.setTextColor(0);
+    g.setFont("helvetica", "normal");
+  };
+  encabezado(doc);
+
+  let y = 24;
+  const nuevaPagina = () => {
+    doc.addPage();
+    y = 24;
+    encabezado(doc);
+  };
+  const asegurarEspacio = (alto: number) => {
+    if (y + alto > LIMITE) nuevaPagina();
+  };
+
+  // ---- Portada ----
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(24);
+  doc.setTextColor(...NAVY);
+  doc.text("Kairós", MARGEN, y);
+  doc.setFontSize(9);
+  doc.setTextColor(...GRIS);
+  doc.setFont("helvetica", "normal");
+  doc.text(sanear(t.lema), MARGEN, y + 5);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(...NAVY);
+  const der = sanear(t.titulo);
+  doc.text(der, 210 - MARGEN - doc.getTextWidth(der), y - 4);
+  doc.setFontSize(9);
+  doc.setTextColor(...GRIS);
+  doc.setFont("helvetica", "normal");
+  const fechaHoy = sanear(hoy);
+  doc.text(fechaHoy, 210 - MARGEN - doc.getTextWidth(fechaHoy), y + 1);
+  y += 14;
+
+  // ---- Cajas de resumen ----
+  const caja = (
+    x: number,
+    etiqueta: string,
+    valor: string,
+    detalle: string,
+    avance: number,
+    colorBarra: string
+  ) => {
+    const ancho = (ANCHO - 10) / 2;
+    doc.setDrawColor(223, 231, 240);
+    doc.setFillColor(247, 250, 253);
+    doc.roundedRect(x, y, ancho, 30, 3, 3, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...GRIS);
+    doc.text(sanear(etiqueta.toUpperCase()), x + 4, y + 7);
+    doc.setFontSize(15);
+    doc.setTextColor(...NAVY);
+    doc.text(sanear(valor), x + 4, y + 17);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...GRIS);
+    doc.text(sanear(detalle), x + 4, y + 23);
+    const bw = ancho - 8;
+    const [br, bg, bb] = hexARgb(colorBarra);
+    doc.setFillColor(227, 235, 243);
+    doc.roundedRect(x + 4, y + 25.5, bw, 2.4, 1.2, 1.2, "F");
+    if (avance > 0) {
+      doc.setFillColor(br, bg, bb);
+      doc.roundedRect(x + 4, y + 25.5, Math.max(2.4, bw * avance), 2.4, 1.2, 1.2, "F");
+    }
+  };
+
+  const metaVol = datos.metas.voluntariado;
+  const metaLab = datos.metas.labor;
+  const detalleMeta = (registrado: number, meta: number) =>
+    meta > 0 ? `${t.meta}: ${formatoHM(meta, idioma)} · ${pct(registrado, meta)}` : t.sinMeta;
+
+  caja(
+    MARGEN,
+    t.voluntariado,
+    formatoHM(resumen.voluntariado, idioma),
+    detalleMeta(resumen.voluntariado, metaVol),
+    metaVol > 0 ? Math.min(1, resumen.voluntariado / metaVol) : 0,
+    config.colorVol
+  );
+  caja(
+    MARGEN + (ANCHO - 10) / 2 + 10,
+    t.labor,
+    formatoHM(resumen.labor, idioma),
+    detalleMeta(resumen.labor, metaLab),
+    metaLab > 0 ? Math.min(1, resumen.labor / metaLab) : 0,
+    config.colorLab
+  );
+  y += 38;
+
+  // ---- Secciones ----
+  const tituloSeccion = (texto: string) => {
+    asegurarEspacio(14);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(...NAVY);
+    doc.text(sanear(texto.toUpperCase()), MARGEN, y);
+    y += 2.5;
+    doc.setDrawColor(...NAVY);
+    doc.setLineWidth(0.4);
+    doc.line(MARGEN, y, MARGEN + ANCHO, y);
+    y += 4;
+    doc.setTextColor(0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+  };
+
+  const tablaActividades = (lista: Actividad[]) => {
+    if (lista.length === 0) {
+      doc.setTextColor(...GRIS);
+      doc.setFont("helvetica", "italic");
+      doc.text(sanear(t.sinActividades), MARGEN, y);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0);
+      y += 8;
+      return;
+    }
+    asegurarEspacio(24);
+    autoTable(doc, {
+      startY: y,
+      head: [[sanear(t.actividad), sanear(t.lugar), sanear(t.registros), sanear(t.horas)]],
+      body: lista.map((a) => {
+        const f = porActividad.get(a.id);
+        return [
+          sanear(a.nombre),
+          sanear(a.lugar || "—"),
+          String(f ? f.registros : 0),
+          formatoHM(f ? f.minutos : 0, idioma),
+        ];
+      }),
+      theme: "grid",
+      styles: { fontSize: 9, cellPadding: 2, textColor: TINTA, lineColor: [230, 237, 244] },
+      headStyles: { fillColor: NAVY, textColor: 255, fontSize: 8.5 },
+      alternateRowStyles: { fillColor: [246, 249, 252] },
+      columnStyles: { 2: { halign: "center" }, 3: { halign: "right" } },
+      margin: { left: MARGEN, right: MARGEN },
+      didDrawPage: () => encabezado(doc),
+    });
+    const ultima = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY;
+    y = (ultima ?? y) + 8;
+  };
+
+  tituloSeccion(t.voluntariado);
+  tablaActividades(actividades.filter((a) => aportaVoluntariado(a.tipo)));
+
+  tituloSeccion(t.labor);
+  tablaActividades(actividades.filter((a) => aportaLabor(a.tipo)));
+
+  tituloSeccion(`${t.detalle} (${datos.registros.length})`);
+  if (datos.registros.length === 0) {
+    doc.setTextColor(...GRIS);
+    doc.setFont("helvetica", "italic");
+    doc.text(sanear(t.sinRegistros), MARGEN, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0);
+    y += 8;
+  } else {
+    asegurarEspacio(24);
+    autoTable(doc, {
+      startY: y,
+      head: [
+        [
+          sanear(t.fecha),
+          sanear(t.actividad),
+          sanear(t.llegada),
+          sanear(t.salida),
+          sanear(t.duracion),
+          sanear(t.notas),
+        ],
+      ],
+      body: registrosOrdenados.map((r) => {
+        const a = mapaAct.get(r.actividadId);
+        return [
+          sanear(fechaLarga(r.fecha, idioma)),
+          sanear(a ? a.nombre : "—"),
+          formatearHoraHHMM(r.llegada, config.formatoHora, idioma),
+          formatearHoraHHMM(r.salida, config.formatoHora, idioma),
+          formatoHM(minutosDeRegistro(r), idioma),
+          sanear(r.notas || ""),
+        ];
+      }),
+      theme: "grid",
+      styles: { fontSize: 8, cellPadding: 1.8, textColor: TINTA, lineColor: [230, 237, 244], overflow: "linebreak" },
+      headStyles: { fillColor: NAVY, textColor: 255, fontSize: 8 },
+      alternateRowStyles: { fillColor: [246, 249, 252] },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        2: { halign: "center", cellWidth: 15 },
+        3: { halign: "center", cellWidth: 15 },
+        4: { halign: "right", cellWidth: 17 },
+      },
+      margin: { left: MARGEN, right: MARGEN },
+      didDrawPage: () => encabezado(doc),
+    });
+    const ultima = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY;
+    y = (ultima ?? y) + 8;
+  }
+
+  // ---- Totales ----
+  asegurarEspacio(14);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...TINTA);
+  const totalesTexto = sanear(
+    `${t.totalGeneral}: ${formatoHM(resumen.totalGeneral, idioma)} · ${t.registros}: ${resumen.totalRegistros} · ${t.actividades}: ${resumen.totalActividades}`
+  );
+  doc.text(totalesTexto, MARGEN, y);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(0);
+  y += 8;
+
+  // ---- Pie ----
+  doc.setDrawColor(223, 231, 240);
+  doc.setLineWidth(0.3);
+  doc.line(MARGEN, PIE - 6, MARGEN + ANCHO, PIE - 6);
+  doc.setFontSize(8);
+  doc.setTextColor(132, 148, 166);
+  const pieIzq = sanear(`Kairós · ${t.lema}`);
+  doc.text(pieIzq, MARGEN, PIE - 2);
+  const pieDer = sanear(`${t.generado} ${hoy}`);
+  doc.text(pieDer, 210 - MARGEN - doc.getTextWidth(pieDer), PIE - 2);
+
+  return doc.output("blob");
 }

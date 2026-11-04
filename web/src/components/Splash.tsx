@@ -1,17 +1,32 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ESLOGAN } from "../version";
 import { useT } from "../i18n";
 import { MarcaLogo } from "./Marca";
 
-export default function Splash({ onDone }: { onDone: () => void }) {
+/**
+ * Pantalla de bienvenida: se mantiene ~2.5 s y sale con un fundido
+ * (2.9 s en total), para que se perciba como una presentación real.
+ */
+export default function Splash({ tono, onDone }: { tono?: string; onDone: () => void }) {
   const t = useT();
+  const [saliendo, setSaliendo] = useState(false);
+
   useEffect(() => {
-    const t = window.setTimeout(onDone, 1600);
-    return () => window.clearTimeout(t);
+    const inicio = window.setTimeout(() => setSaliendo(true), 2500);
+    const fin = window.setTimeout(onDone, 2950);
+    return () => {
+      window.clearTimeout(inicio);
+      window.clearTimeout(fin);
+    };
   }, [onDone]);
 
   return (
-    <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-[#123C63] px-8 text-center">
+    <div
+      className={`fixed inset-0 z-[90] flex flex-col items-center justify-center px-8 text-center transition-opacity duration-500 ${
+        saliendo ? "opacity-0" : "opacity-100"
+      }`}
+      style={{ backgroundColor: tono || "#123C63" }}
+    >
       <style>{`
         @keyframes kairos-aparece {
           0% { opacity: 0; transform: scale(0.86) translateY(10px); }

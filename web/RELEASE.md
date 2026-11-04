@@ -1,34 +1,32 @@
-# Kairós v1.0.0
+# Kairós v1.1.0
 
 **Aprovecha el momento, transforma tu entorno.**
 
-Primera versión pública de Kairós, tu bitácora de horas de voluntariado y labor social.
+Versión de correcciones basada en tus comentarios al probar la app en el teléfono.
 
-## Qué incluye
+## Qué se corrige
 
-- **Metas editables** de voluntariado y labor social con barras de progreso y faltantes.
-- **Dos gráficas de dona** (una por tipo) con color propio editable por actividad y color
-  para las horas restantes.
-- **Actividades completas** (CRUD): nombre, tipo *voluntariado / labor social / ambos*, emoji,
-  lugar, descripción y color. Búsqueda y filtros.
-- **Registros por actividad** (CRUD): fecha, hora de llegada y salida, notas y varias fotos
-  comprimidas. La salida antes de la llegada cuenta como cambio de día.
-- **Regla de tiempo**: siempre horas enteras + minutos de 00 a 59 (nunca decimales).
-- **Reporte PDF** listo para imprimir, en español o inglés.
-- **Respaldo** exportable/importable en JSON con las fotos incluidas.
-- **Apariencia**: tema claro/oscuro, 9 paletas, emojis en color/gris/oculto, formato 12/24 h.
-- **Recordatorio diario** con notificación local.
-- **Idioma**: español e inglés.
-- Splash, doble retroceso para salir, ayuda/FAQ y acerca de.
+- **Exportar respaldo**: ahora abre la hoja de guardado de Android (administrador de
+  archivos / compartir), en vez de no hacer nada. *La importación no se tocó: sigue igual.*
+- **Reporte PDF**: ya **no se abre en el navegador**. La app muestra una **vista previa
+  dentro de la app** con botones **Descargar PDF** y **Cerrar**. Al descargar se genera
+  el archivo PDF real (resumen, tablas y detalle) y se abre la hoja para guardarlo o
+  compartirlo.
+- **Icono de la app**: se genera el icono real de Kairós (reloj de arena con planta) para
+  todos los tamaños de pantalla, en lugar del icono genérico.
+- **Splash**: se mantiene en pantalla **2.5 segundos** antes de entrar a la app, con un
+  fundido de salida suave.
+- **Color de la app**: al cambiarlo en Ajustes ahora se recolorea **toda la paleta**:
+  fondos, tarjetas, bordes, textos secundarios, barra de navegación, selección de texto
+  y la pantalla de bienvenida.
 
 ## Instalación
 
-1. Descarga `Kairos-1.0.0.apk` desde los assets de esta Release.
-2. Ábrelo en tu teléfono y permite la instalación de fuentes desconocidas si te lo pide.
+1. Descarga `Kairos-1.1.0.apk` desde los assets de esta Release.
+2. Si vienes de la 1.0.0, instálala encima: **conserva tus datos**.
 3. Tus datos quedan guardados solo en el dispositivo (sin nube).
 
 ## Notas técnicas
 
-- Paquete: `com.irvin.kairos` · versionCode 10000.
+- Paquete: `com.irvin.kairos` · versionCode 11000.
 - Firmada con el keystore del proyecto (se conserva en los secretos del repositorio).
-- Actualizaciones futuras se instalan encima conservando datos.

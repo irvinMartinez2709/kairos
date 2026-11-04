@@ -53,6 +53,11 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Generar iconos de la app (Kairós)
+        run: |
+          npm install --no-save sharp
+          node scripts/generar-iconos.mjs
+
       - name: Versión desde package.json
         id: meta
         run: |

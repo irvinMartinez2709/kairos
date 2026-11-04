@@ -5,10 +5,9 @@ import { App as AppPlugin } from "@capacitor/app";
 import { useDatos } from "./hooks/useDatos";
 import { CtxIdioma, traducir } from "./i18n";
 import { NOMBRE_APP } from "./version";
-import { aplicarPaleta } from "./lib/colores";
+import { aplicarPaleta, acentoDe, mezclarHex } from "./lib/colores";
 import { hoyISO } from "./lib/horas";
-import { abrirReporte } from "./lib/reporte";
-import { construirRespaldo, descargarArchivo, importarRespaldo } from "./lib/respaldo";
+import { construirRespaldo, guardarRespaldo, importarRespaldo } from "./lib/respaldo";
 
 import Splash from "./components/Splash";
 import Inicio from "./components/Inicio";
@@ -17,6 +16,7 @@ import ActividadDetalle from "./components/ActividadDetalle";
 import Configuracion from "./components/Configuracion";
 import Ayuda from "./components/Ayuda";
 import Acerca from "./components/Acerca";
+import VistaPreviaReporte from "./components/VistaPreviaReporte";
 import { Dialogos, avisar, confirmar } from "./components/ui";
 import { Icono } from "./components/iconos";
 import { EditorActividad, type BorradorActividad } from "./components/EditorActividad";
@@ -50,6 +50,8 @@ export default function App() {
     tipo: "voluntariado" | "labor";
   }>({ abierta: false, tipo: "voluntariado" });
 
+  const [vistaPreviaPDF, setVistaPreviaPDF] = useState(false);
+
   const ultimoBack = useRef(0);
   const [avisoBack, setAvisoBack] = useState(false);
 
@@ -62,13 +64,17 @@ export default function App() {
     html.setAttribute("data-emojis", config.emojis);
     aplicarPaleta(config, tema);
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", tema === "dark" ? "#0C1526" : "#123C63");
+    if (meta) meta.setAttribute("content", acentoDe(config.color, tema));
   }, [tema, config]);
 
   /* Botón atrás de Android: primero cierra lo abierto, luego doble pulsación para salir */
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const handle = AppPlugin.addListener("backButton", () => {
+      if (vistaPreviaPDF) {
+        setVistaPreviaPDF(false);
+        return;
+      }
       if (editorActividad.abierta || editorRegistro.abierta || editorMeta.abierta) {
         setEditorActividad({ abierta: false, id: null });
         setEditorRegistro({ abierta: false, id: null });
@@ -99,7 +105,7 @@ export default function App() {
     return () => {
       void handle.then((l) => l.remove());
     };
-  }, [actividadAbierta, seccion, editorActividad.abierta, editorRegistro.abierta, editorMeta.abierta]);
+  }, [actividadAbierta, seccion, vistaPreviaPDF, editorActividad.abierta, editorRegistro.abierta, editorMeta.abierta]);
 
   /* Recordatorio diario */
   useEffect(() => {
@@ -204,10 +210,16 @@ export default function App() {
   }
 
   async function exportar() {
-    const texto = await construirRespaldo(datos, config, tema);
-    const fecha = new Date().toISOString().slice(0, 10);
-    descargarArchivo(`kairos-respaldo-${fecha}.json`, texto);
-    avisar(t("Respaldo descargado"));
+    try {
+      const texto = await construirRespaldo(datos, config, tema);
+      const fecha = new Date().toISOString().slice(0, 10);
+      const resultado = await guardarRespaldo(`kairos-respaldo-${fecha}.json`, texto);
+      if (resultado === "compartido") avisar(t("Respaldo guardado"));
+      else if (resultado === "descargado") avisar(t("Respaldo descargado"));
+      // "cancelado": el usuario cerró la hoja, no hay nada que avisar
+    } catch {
+      avisar(t("No se pudo exportar el respaldo"), "error");
+    }
   }
 
   async function importar(texto: string) {
@@ -264,7 +276,12 @@ export default function App() {
   return (
     <CtxIdioma.Provider value={config.idioma}>
       <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col">
-        {cargando && <Splash onDone={() => setCargando(false)} />}
+        {cargando && (
+          <Splash
+            tono={mezclarHex(acentoDe(config.color, tema), "#0A1220", 0.45)}
+            onDone={() => setCargando(false)}
+          />
+        )}
 
         <main className="flex-1 px-4 pb-24 pt-3">
           {seccion === "inicio" && (
@@ -327,7 +344,7 @@ export default function App() {
               onEditarMeta={(tipo) => setEditorMeta({ abierta: true, tipo })}
               onExportar={() => void exportar()}
               onImportar={(texto) => void importar(texto)}
-              onReporte={() => abrirReporte({ datos, config, tema, idioma: config.idioma })}
+              onReporte={() => setVistaPreviaPDF(true)}
               onBorrarTodo={() => void borrarTodo()}
               onCargarEjemplo={() => void cargarEjemplo()}
               onAyuda={() => setSeccion("ayuda")}
@@ -411,6 +428,15 @@ export default function App() {
           metas={datos.metas}
           onCerrar={() => setEditorMeta((e) => ({ ...e, abierta: false }))}
           onGuardar={api.cambiarMetas}
+        />
+
+        <VistaPreviaReporte
+          abierta={vistaPreviaPDF}
+          datos={datos}
+          config={config}
+          tema={tema}
+          idioma={config.idioma}
+          onCerrar={() => setVistaPreviaPDF(false)}
         />
 
         <Dialogos />

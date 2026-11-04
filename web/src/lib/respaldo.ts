@@ -1,6 +1,7 @@
 import type { Config, Datos, Tema } from "../types";
 import { normalizarDatos } from "./almacen";
 import { guardarFotoConId, leerFoto } from "./fotos";
+import { guardarOCompartir, type ResultadoGuardar } from "./archivos";
 
 export const VERSION_RESPALDO = 1;
 
@@ -31,16 +32,15 @@ export async function construirRespaldo(
   );
 }
 
-export function descargarArchivo(nombre: string, contenido: string, tipo = "application/json") {
-  const blob = new Blob([contenido], { type: `${tipo};charset=utf-8` });
-  const url = URL.createObjectURL(blob);
-  const enlace = document.createElement("a");
-  enlace.href = url;
-  enlace.download = nombre;
-  document.body.appendChild(enlace);
-  enlace.click();
-  document.body.removeChild(enlace);
-  window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+/** Guarda el respaldo en el dispositivo (hoja nativa de Android) o lo descarga. */
+export function guardarRespaldo(nombre: string, contenido: string): Promise<ResultadoGuardar> {
+  return guardarOCompartir({
+    nombre,
+    contenido,
+    tipo: "application/json",
+    titulo: "Kairós",
+    texto: "Respaldo de datos de Kairós",
+  });
 }
 
 export interface RespaldoImportado {

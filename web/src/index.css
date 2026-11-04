@@ -168,7 +168,7 @@
   }
 
   ::selection {
-    background-color: rgba(18, 163, 101, 0.3);
+    background-color: rgb(var(--c-acc) / 0.3);
   }
 
   .dark input[type="date"]::-webkit-calendar-picker-indicator,
