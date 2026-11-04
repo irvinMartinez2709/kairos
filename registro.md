@@ -16,7 +16,7 @@ editables, actividades con color propio, fotos, notas y dos gráficas de dona.
 | Reporte PDF | ✅ Generación por ventana de impresión |
 | Respaldo JSON con fotos | ✅ Exportar / importar |
 | i18n español / inglés | ✅ Traducción completa (194 cadenas) |
-| APK Android (Capacitor + GitHub Actions) | ⏳ Pendiente de aprobación del usuario |
+| APK Android (Capacitor + GitHub Actions) | ✅ v1.0.0 publicada e instalada |
 
 ## Funcionalidad
 
@@ -94,7 +94,30 @@ Playwright (430×932, móvil):
   y `8:00 a. m.`
 - `npx tsc --noEmit` sin errores y `npm run build` correcto; cero errores de consola.
 
+## Publicación Android (v1.0.0)
+
+- **Repo**: https://github.com/irvinMartinez2709/kairos (privado).
+- **Release**: `Kairós v1.0.0` con el asset `Kairos-1.0.0.apk` (versionCode **10000**, ~3.1 MB).
+- **Workflow** `.github/workflows/build-android.yml` (se dispara en push a `main` o manualmente):
+  `npm ci` → `npm run build` → `npx cap add android` → `npx cap sync android` → versión desde
+  `web/package.json` (`MAJOR*10000 + MINOR*100 + PATCH`) → `assembleRelease` → GitHub Release
+  con las notas de `web/RELEASE.md`.
+- **Firma**: el keystore se genera **una sola vez** con `.github/workflows/keystore.yml` y vive
+  en los secretos del repositorio (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`), con copia
+  local en `ks/` (ignorada por git). Si faltan los secretos, el CI compila con firma debug.
+- **Verificado por adb** en Redmi `2409BRN2CL`: `versionCode=10000`, `versionName=1.0.0`,
+  arranque correcto y sin `FATAL` en logcat; datos de ejemplo visibles.
+
+### Para publicar una versión nueva
+1. Subir la versión en `web/package.json` (y la entrada raíz de `package-lock.json`) y actualizar
+   `web/RELEASE.md`.
+2. `git add …` → `git commit -m "feat: …"` → `git push origin main`.
+3. Esperar el run de **Build Android APK**; aparece la Release con el APK.
+4. `adb install -r apk\Kairos-X.Y.Z.apk` (conserva datos: misma firma y versionCode mayor).
+
 ## Pendiente
 
-- Fase APK: `npx cap add android`, `npx cap sync`, compilar con GitHub Actions (genera GitHub
-  Release) y, solo si el usuario lo confirma, instalar y verificar en un dispositivo vía `adb`.
+- Ajustes finos que solo se pueden calibrar en el dispositivo: recordatorio diario con
+  notificaciones locales (hoy muestra el aviso mientras la app está abierta) y pruebas de
+  doble retroceso para salir.
+- Verificar la instalación como PWA desde el navegador (icono y splash).

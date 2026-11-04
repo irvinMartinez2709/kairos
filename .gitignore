@@ -9,6 +9,9 @@ web/android/
 # Keystore de firma (NUNCA se versiona)
 ks/
 
+# Artefactos locales de release
+apk/
+
 # Sistema
 .DS_Store
 Thumbs.db
