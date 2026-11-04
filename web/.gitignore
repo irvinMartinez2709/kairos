@@ -1,0 +1,31 @@
+# Dependencias
+node_modules/
+
+# Compilado
+dist/
+dist-ssr/
+*.local
+
+# Vite
+.vite/
+
+# Android / Capacitor
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/.idea/
+android/captures/
+android/app/src/main/assets/public/
+android/app/src/main/res/xml/config.xml
+
+# iOS (por si se agrega después)
+ios/App/Pods/
+ios/App/build/
+ios/App/App/public/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*

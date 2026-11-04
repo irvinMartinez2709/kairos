@@ -6,8 +6,14 @@ web/.vite/
 # Proyecto Android generado por el CI (no se versiona)
 web/android/
 
+# Keystore de firma (NUNCA se versiona)
+ks/
+
 # Sistema
 .DS_Store
 Thumbs.db
 *.log
 npm-debug.log*
+
+# Capturas de pruebas
+capturas/

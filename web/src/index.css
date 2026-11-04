@@ -1,0 +1,203 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --c-fondo: 238 243 248;
+    --c-card: 255 255 255;
+    --c-soft: 239 244 250;
+    --c-tinta: 17 30 46;
+    --c-subtinta: 88 104 126;
+    --c-acc: 18 60 99;
+    --c-acc-fuerte: 12 44 74;
+    --c-acc-suave: 226 236 246;
+    --c-borde: 213 224 236;
+    --c-onacc: 255 255 255;
+    --c-vol: 18 163 101;
+    --c-lab: 18 60 99;
+    --c-restante: 219 227 237;
+  }
+
+  .dark {
+    --c-fondo: 12 21 38;
+    --c-card: 20 32 52;
+    --c-soft: 27 42 66;
+    --c-tinta: 238 244 252;
+    --c-subtinta: 154 172 196;
+    --c-acc: 122 186 240;
+    --c-acc-fuerte: 96 165 250;
+    --c-acc-suave: 27 46 72;
+    --c-borde: 40 57 84;
+    --c-onacc: 8 16 30;
+    --c-restante: 43 58 84;
+  }
+
+  /* Presets de acento */
+  html[data-color="marino"]:not(.dark) {
+    --c-acc: 18 60 99;
+    --c-acc-fuerte: 12 44 74;
+    --c-acc-suave: 226 236 246;
+  }
+  html[data-color="marino"].dark {
+    --c-acc: 122 186 240;
+    --c-acc-fuerte: 96 165 250;
+    --c-acc-suave: 27 46 72;
+  }
+
+  html[data-color="esmeralda"]:not(.dark) {
+    --c-acc: 14 155 98;
+    --c-acc-fuerte: 11 124 78;
+    --c-acc-suave: 219 247 234;
+  }
+  html[data-color="esmeralda"].dark {
+    --c-acc: 52 211 153;
+    --c-acc-fuerte: 16 185 129;
+    --c-acc-suave: 22 56 46;
+  }
+
+  html[data-color="azul"]:not(.dark) {
+    --c-acc: 37 99 235;
+    --c-acc-fuerte: 29 78 196;
+    --c-acc-suave: 219 234 254;
+  }
+  html[data-color="azul"].dark {
+    --c-acc: 96 165 250;
+    --c-acc-fuerte: 59 130 246;
+    --c-acc-suave: 28 45 74;
+  }
+
+  html[data-color="morado"]:not(.dark) {
+    --c-acc: 124 58 237;
+    --c-acc-fuerte: 109 40 217;
+    --c-acc-suave: 237 233 254;
+  }
+  html[data-color="morado"].dark {
+    --c-acc: 167 139 250;
+    --c-acc-fuerte: 139 92 246;
+    --c-acc-suave: 46 38 72;
+  }
+
+  html[data-color="rosa"]:not(.dark) {
+    --c-acc: 219 39 119;
+    --c-acc-fuerte: 190 24 93;
+    --c-acc-suave: 252 231 243;
+  }
+  html[data-color="rosa"].dark {
+    --c-acc: 244 114 182;
+    --c-acc-fuerte: 236 72 153;
+    --c-acc-suave: 64 30 50;
+  }
+
+  html[data-color="naranja"]:not(.dark) {
+    --c-acc: 234 88 12;
+    --c-acc-fuerte: 194 65 12;
+    --c-acc-suave: 255 237 213;
+  }
+  html[data-color="naranja"].dark {
+    --c-acc: 251 146 60;
+    --c-acc-fuerte: 249 115 22;
+    --c-acc-suave: 64 40 20;
+  }
+
+  html[data-color="teal"]:not(.dark) {
+    --c-acc: 13 148 136;
+    --c-acc-fuerte: 15 118 110;
+    --c-acc-suave: 224 247 244;
+  }
+  html[data-color="teal"].dark {
+    --c-acc: 45 212 191;
+    --c-acc-fuerte: 20 184 166;
+    --c-acc-suave: 24 56 54;
+  }
+
+  html[data-color="ambar"]:not(.dark) {
+    --c-acc: 180 83 9;
+    --c-acc-fuerte: 154 66 5;
+    --c-acc-suave: 254 243 199;
+  }
+  html[data-color="ambar"].dark {
+    --c-acc: 251 191 36;
+    --c-acc-fuerte: 245 158 11;
+    --c-acc-suave: 64 50 20;
+  }
+
+  html[data-color="gris"]:not(.dark) {
+    --c-acc: 71 85 105;
+    --c-acc-fuerte: 51 65 85;
+    --c-acc-suave: 241 245 249;
+  }
+  html[data-color="gris"].dark {
+    --c-acc: 148 163 184;
+    --c-acc-fuerte: 100 116 139;
+    --c-acc-suave: 40 48 62;
+  }
+
+  html[data-emojis="mono"] .emoji {
+    filter: grayscale(1) contrast(1.1);
+  }
+  html[data-emojis="ninguno"] .emoji {
+    display: none;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  @supports (height: 100dvh) {
+    html,
+    body,
+    #root {
+      height: 100dvh;
+    }
+  }
+
+  body {
+    @apply bg-fondo font-sans text-tinta antialiased;
+    overscroll-behavior-y: none;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font-size: 16px;
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background-color: rgba(18, 163, 101, 0.3);
+  }
+
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+}
+
+@layer components {
+  .smooth-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tarjeta {
+    @apply rounded-3xl border-2 border-borde bg-card;
+  }
+}
+
+@media print {
+  .no-imprimir {
+    display: none !important;
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "Kairós — Horas de voluntariado y labor social",
+  "short_name": "Kairós",
+  "description": "Aprovecha el momento, transforma tu entorno.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#123C63",
+  "theme_color": "#123C63",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "./logo-icono.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./iconos/icono-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./iconos/icono-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./iconos/icono-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
