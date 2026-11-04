@@ -1,6 +1,8 @@
 export type Tema = "light" | "dark";
 export type TipoActividad = "voluntariado" | "labor" | "ambos";
 export type Idioma = "es" | "en";
+/** Modo del recordatorio: días de la semana repetidos o una fecha única. */
+export type ModoRecordatorio = "semanal" | "fecha";
 
 export interface Actividad {
   id: string;
@@ -45,6 +47,14 @@ export interface Config {
   colorRestante: string;
   notificaciones: boolean;
   horaRecordatorio: string;
+  /** Días de la semana del recordatorio: 1=domingo … 7=sábado (numeración del plugin). */
+  diasRecordatorio: number[];
+  /** «semanal» repite por días de la semana; «fecha» avisa una sola vez. */
+  modoRecordatorio: ModoRecordatorio;
+  /** Fecha única ("YYYY-MM-DD") cuando modoRecordatorio es "fecha". */
+  fechaRecordatorio: string;
+  /** Aviso automático de actualizaciones (se restablece si el usuario actualiza solo). */
+  avisarActualizaciones: boolean;
   confirmarSalida: boolean;
 }
 

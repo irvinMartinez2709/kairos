@@ -19,6 +19,10 @@ export const CONFIG_DEFECTO: Config = {
   colorRestante: "#DBE3ED",
   notificaciones: false,
   horaRecordatorio: "19:00",
+  diasRecordatorio: [1, 2, 3, 4, 5, 6, 7],
+  modoRecordatorio: "semanal",
+  fechaRecordatorio: "",
+  avisarActualizaciones: true,
   confirmarSalida: true,
 };
 
@@ -161,6 +165,14 @@ export function guardarDatos(d: Datos): void {
   }
 }
 
+/** Valida y deduplica los días de la semana (1=domingo … 7=sábado). Vacío → todos. */
+function normalizarDias(dias: unknown): number[] {
+  if (!Array.isArray(dias)) return [...CONFIG_DEFECTO.diasRecordatorio];
+  const unicos = [...new Set(dias.filter((d): d is number => Number.isInteger(d) && d >= 1 && d <= 7))];
+  unicos.sort((a, b) => a - b);
+  return unicos.length ? unicos : [...CONFIG_DEFECTO.diasRecordatorio];
+}
+
 export function leerConfig(): Config {
   try {
     const raw = localStorage.getItem(CLAVE_CONFIG);
@@ -181,6 +193,11 @@ export function leerConfig(): Config {
       notificaciones: c.notificaciones === true,
       horaRecordatorio:
         typeof c.horaRecordatorio === "string" ? c.horaRecordatorio : CONFIG_DEFECTO.horaRecordatorio,
+      diasRecordatorio: normalizarDias(c.diasRecordatorio),
+      modoRecordatorio: c.modoRecordatorio === "fecha" ? "fecha" : "semanal",
+      fechaRecordatorio:
+        typeof c.fechaRecordatorio === "string" ? c.fechaRecordatorio : CONFIG_DEFECTO.fechaRecordatorio,
+      avisarActualizaciones: c.avisarActualizaciones !== false,
       confirmarSalida: c.confirmarSalida !== false,
     };
   } catch {

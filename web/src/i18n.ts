@@ -248,6 +248,36 @@ const EN: Record<string, string> = {
     "All activities, entries and photos will be erased. This can't be undone.",
   "registra tus horas el mismo día. Así no olvidas notas ni fotos y el resumen siempre está al día.":
     "log your hours the same day. That way you won't forget notes or photos and your summary stays up to date.",
+
+  // v1.2.0 — recordatorios nativos y actualizaciones
+  "Días de la semana": "Days of the week",
+  "Fecha única": "One-time date",
+  Días: "Days",
+  Dom: "Sun",
+  Lun: "Mon",
+  Mar: "Tue",
+  Mié: "Wed",
+  Jue: "Thu",
+  Vie: "Fri",
+  Sáb: "Sat",
+  "Elige al menos un día": "Pick at least one day",
+  "Fecha del aviso": "Reminder date",
+  "Las notificaciones se muestran aunque la app esté cerrada.":
+    "Notifications show even when the app is closed.",
+  "Notificación de prueba enviada": "Test notification sent",
+  Actualizaciones: "Updates",
+  "Avisarme de actualizaciones": "Notify me about updates",
+  "Consulta si hay una versión nueva una vez al día, solo con internet.":
+    "Checks for a new version once a day, only when online.",
+  "Buscar actualizaciones": "Check for updates",
+  "Versión actual": "Current version",
+  "No se pudo buscar. Revisa tu conexión.": "Couldn't check. Check your connection.",
+  "Estás en la última versión": "You're on the latest version",
+  "Nueva versión disponible": "New version available",
+  "Hay una versión nueva de Kairós ({v}). ¿Descargar e instalarla ahora?":
+    "A new version of Kairós ({v}) is available. Download and install it now?",
+  Sí: "Yes",
+  No: "No",
 };
 
 export function traducir(

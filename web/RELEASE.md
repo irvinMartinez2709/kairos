@@ -1,32 +1,38 @@
-# Kairós v1.1.0
+# Kairós v1.2.0
 
 **Aprovecha el momento, transforma tu entorno.**
 
-Versión de correcciones basada en tus comentarios al probar la app en el teléfono.
+Versión con notificaciones nativas reales y buscador de actualizaciones.
 
-## Qué se corrige
+## Qué hay nuevo
 
-- **Exportar respaldo**: ahora abre la hoja de guardado de Android (administrador de
-  archivos / compartir), en vez de no hacer nada. *La importación no se tocó: sigue igual.*
-- **Reporte PDF**: ya **no se abre en el navegador**. La app muestra una **vista previa
-  dentro de la app** con botones **Descargar PDF** y **Cerrar**. Al descargar se genera
-  el archivo PDF real (resumen, tablas y detalle) y se abre la hoja para guardarlo o
-  compartirlo.
-- **Icono de la app**: se genera el icono real de Kairós (reloj de arena con planta) para
-  todos los tamaños de pantalla, en lugar del icono genérico.
-- **Splash**: se mantiene en pantalla **2.5 segundos** antes de entrar a la app, con un
-  fundido de salida suave.
-- **Color de la app**: al cambiarlo en Ajustes ahora se recolorea **toda la paleta**:
-  fondos, tarjetas, bordes, textos secundarios, barra de navegación, selección de texto
-  y la pantalla de bienvenida.
+- **Notificaciones que sí funcionan**: la app ahora **pide el permiso** con el diálogo
+  nativo de Android al activar los recordatorios (antes mostraba «el dispositivo no admite
+  notificaciones» porque usaba el método de navegador, que Android no soporta).
+- **Elige cuándo avisarte**:
+  - **Días de la semana**: selecciona los días que quieras (Dom…Sáb) y la hora del aviso.
+  - **Fecha única**: elige una fecha concreta y la hora, y recibirás un solo aviso.
+  - El aviso llega **aunque la app esté cerrada** (se programa en el sistema).
+  - Botón **Probar notificación** para verificar al instante.
+- **Actualizaciones**:
+  - Botón **Buscar actualizaciones** en Ajustes → consulta la última versión publicada en
+    GitHub. Si hay una nueva, pregunta: **Sí** → abre la descarga del APK e instálala;
+    **No** → no hace nada.
+  - **Chequeo automático una vez al día**, solo si hay internet, con el mismo aviso.
+  - Se puede **desactivar** con el interruptor «Avisarme de actualizaciones»; si
+    actualizas por tu cuenta, el interruptor se reactiva solo en la siguiente versión.
+  - Si rechazas una versión, no vuelve a preguntar por esa misma versión.
 
 ## Instalación
 
-1. Descarga `Kairos-1.1.0.apk` desde los assets de esta Release.
-2. Si vienes de la 1.0.0, instálala encima: **conserva tus datos**.
+1. Descarga `Kairos-1.2.0.apk` desde los assets de esta Release.
+2. Instálala encima de la anterior: **conserva tus datos**.
 3. Tus datos quedan guardados solo en el dispositivo (sin nube).
 
 ## Notas técnicas
 
-- Paquete: `com.irvin.kairos` · versionCode 11000.
+- Paquete: `com.irvin.kairos` · versionCode 12000.
+- Plugins nativos: `@capacitor/local-notifications` (permiso POST_NOTIFICATIONS y
+  alarmas repetidas por día de la semana) y `@capacitor/browser` (descarga del APK).
+- El repo es **público** para poder consultar las releases sin autenticación.
 - Firmada con el keystore del proyecto (se conserva en los secretos del repositorio).

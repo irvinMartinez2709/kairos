@@ -1,12 +1,40 @@
 import { useRef } from "react";
-import type { Config, Datos, Idioma, Tema } from "../types";
+import type { Config, Datos, Idioma, ModoRecordatorio, Tema } from "../types";
 import { COLOR_PRESETS } from "../types";
 import { COLORES_ACTIVIDAD } from "../types";
 import { formatoHM } from "../lib/horas";
-import { avisar, Boton, Interruptor, Segmentado, Tarjeta } from "./ui";
+import { avisar, Boton, Chip, Interruptor, Segmentado, Tarjeta } from "./ui";
 import { Icono, type NombreIcono } from "./iconos";
 import { NOMBRE_APP, VERSION, VERSION_CODE } from "../version";
+import {
+  cancelarRecordatorios,
+  enviarPrueba,
+  pedirPermisoNotificaciones,
+} from "../lib/notificaciones";
 import { useT } from "../i18n";
+
+/** Días de la semana con la numeración del plugin: 1=domingo … 7=sábado. */
+const DIAS_SEMANA: Array<{ id: number; texto: string }> = [
+  { id: 1, texto: "Dom" },
+  { id: 2, texto: "Lun" },
+  { id: 3, texto: "Mar" },
+  { id: 4, texto: "Mié" },
+  { id: 5, texto: "Jue" },
+  { id: 6, texto: "Vie" },
+  { id: 7, texto: "Sáb" },
+];
+
+function fechaDeMañana(): string {
+  const d = new Date(Date.now() + 86400000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function hoyLocal(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 function Fila({
   icono,
@@ -81,6 +109,7 @@ export default function Configuracion({
   onCargarEjemplo,
   onAyuda,
   onAcerca,
+  onBuscarActualizaciones,
 }: {
   datos: Datos;
   config: Config;
@@ -95,6 +124,7 @@ export default function Configuracion({
   onCargarEjemplo: () => void;
   onAyuda: () => void;
   onAcerca: () => void;
+  onBuscarActualizaciones: () => void;
 }) {
   const t = useT();
   const entradaImportar = useRef<HTMLInputElement>(null);
@@ -102,35 +132,42 @@ export default function Configuracion({
   async function activarNotificaciones(activo: boolean) {
     if (!activo) {
       onConfig({ notificaciones: false });
+      void cancelarRecordatorios();
       return;
     }
-    if (typeof Notification === "undefined") {
-      avisar(t("Este dispositivo no admite notificaciones"), "error");
-      return;
-    }
-    const permiso = await Notification.requestPermission();
-    if (permiso !== "granted") {
+    /* Pide el permiso nativo (diálogo de Android 13+) antes de programar. */
+    const concedido = await pedirPermisoNotificaciones();
+    if (!concedido) {
       avisar(t("Permiso de notificaciones denegado"), "error");
-      onConfig({ notificaciones: false });
       return;
     }
     onConfig({ notificaciones: true });
     avisar(t("Recordatorio activado"));
   }
 
-  function probarNotificacion() {
-    if (typeof Notification === "undefined") {
+  async function probarNotificacion() {
+    const concedido = await pedirPermisoNotificaciones();
+    if (!concedido) {
+      avisar(t("Permiso de notificaciones denegado"), "error");
+      return;
+    }
+    try {
+      await enviarPrueba(NOMBRE_APP, t("Recuerda registrar tus horas de hoy."));
+      avisar(t("Notificación de prueba enviada"));
+    } catch {
       avisar(t("Este dispositivo no admite notificaciones"), "error");
+    }
+  }
+
+  function alternarDia(dia: number) {
+    const dias = config.diasRecordatorio.includes(dia)
+      ? config.diasRecordatorio.filter((d) => d !== dia)
+      : [...config.diasRecordatorio, dia].sort((a, b) => a - b);
+    if (!dias.length) {
+      avisar(t("Elige al menos un día"), "error");
       return;
     }
-    if (Notification.permission !== "granted") {
-      avisar(t("Primero activa los recordatorios"), "error");
-      return;
-    }
-    new Notification(NOMBRE_APP, {
-      body: t("Recuerda registrar tus horas de hoy."),
-      icon: "./icono-192.png",
-    });
+    onConfig({ diasRecordatorio: dias });
   }
 
   return (
@@ -314,7 +351,51 @@ export default function Configuracion({
             detalle={t("Avisa si aún no registras horas en el día.")}
           />
           {config.notificaciones && (
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 space-y-3">
+              <Segmentado
+                valor={config.modoRecordatorio}
+                onChange={(v) =>
+                  onConfig({
+                    modoRecordatorio: v,
+                    ...(v === "fecha" && !config.fechaRecordatorio
+                      ? { fechaRecordatorio: fechaDeMañana() }
+                      : {}),
+                  })
+                }
+                opciones={[
+                  { id: "semanal" as ModoRecordatorio, texto: t("Días de la semana") },
+                  { id: "fecha" as ModoRecordatorio, texto: t("Fecha única") },
+                ]}
+              />
+
+              {config.modoRecordatorio === "semanal" ? (
+                <div>
+                  <p className="mb-1.5 text-[13px] font-semibold text-tinta">{t("Días")}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DIAS_SEMANA.map((d) => (
+                      <Chip
+                        key={d.id}
+                        activo={config.diasRecordatorio.includes(d.id)}
+                        onClick={() => alternarDia(d.id)}
+                      >
+                        {t(d.texto)}
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <label className="flex items-center justify-between rounded-2xl bg-soft px-3 py-2.5">
+                  <span className="text-[13px] font-semibold text-tinta">{t("Fecha del aviso")}</span>
+                  <input
+                    type="date"
+                    value={config.fechaRecordatorio}
+                    min={hoyLocal()}
+                    onChange={(e) => onConfig({ fechaRecordatorio: e.target.value })}
+                    className="rounded-lg border-2 border-borde bg-card px-2 py-1 text-sm font-bold text-tinta outline-none focus:border-acc"
+                  />
+                </label>
+              )}
+
               <label className="flex items-center justify-between rounded-2xl bg-soft px-3 py-2.5">
                 <span className="text-[13px] font-semibold text-tinta">{t("Hora del aviso")}</span>
                 <input
@@ -324,9 +405,10 @@ export default function Configuracion({
                   className="rounded-lg border-2 border-borde bg-card px-2 py-1 text-sm font-bold text-tinta outline-none focus:border-acc"
                 />
               </label>
+
               <button
                 type="button"
-                onClick={probarNotificacion}
+                onClick={() => void probarNotificacion()}
                 className="w-full rounded-xl bg-acc-suave px-3 py-2 text-[12px] font-bold text-acc"
               >
                 {t("Probar notificación")}
@@ -334,7 +416,31 @@ export default function Configuracion({
             </div>
           )}
           <p className="mt-2 text-[10.5px] leading-relaxed text-subtinta">
-            {t("El aviso se muestra mientras la app está abierta en el dispositivo.")}
+            {t("Las notificaciones se muestran aunque la app esté cerrada.")}
+          </p>
+        </Tarjeta>
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-[13px] font-extrabold uppercase tracking-wide text-subtinta">
+          {t("Actualizaciones")}
+        </h2>
+        <Tarjeta className="p-4">
+          <Interruptor
+            activo={config.avisarActualizaciones}
+            onChange={(v) => onConfig({ avisarActualizaciones: v })}
+            label={t("Avisarme de actualizaciones")}
+            detalle={t("Consulta si hay una versión nueva una vez al día, solo con internet.")}
+          />
+          <button
+            type="button"
+            onClick={onBuscarActualizaciones}
+            className="mt-3 w-full rounded-xl bg-acc-suave px-3 py-2.5 text-[13px] font-bold text-acc"
+          >
+            {t("Buscar actualizaciones")}
+          </button>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-subtinta">
+            {t("Versión actual")}: {VERSION} ({VERSION_CODE})
           </p>
         </Tarjeta>
       </section>

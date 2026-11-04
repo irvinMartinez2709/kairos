@@ -6,8 +6,17 @@ import { useDatos } from "./hooks/useDatos";
 import { CtxIdioma, traducir } from "./i18n";
 import { NOMBRE_APP } from "./version";
 import { aplicarPaleta, acentoDe, mezclarHex } from "./lib/colores";
-import { hoyISO } from "./lib/horas";
 import { construirRespaldo, guardarRespaldo, importarRespaldo } from "./lib/respaldo";
+import { programarRecordatorios } from "./lib/notificaciones";
+import {
+  abrirDescarga,
+  buscarActualizacion,
+  chequeoDiarioPendiente,
+  marcarChequeo,
+  marcarRechazada,
+  registrarVersionVista,
+  versionRechazada,
+} from "./lib/actualizaciones";
 
 import Splash from "./components/Splash";
 import Inicio from "./components/Inicio";
@@ -28,7 +37,8 @@ type Seccion = "inicio" | "actividades" | "ajustes" | "ayuda" | "acerca";
 export default function App() {
   const api = useDatos();
   const { datos, config, tema } = api;
-  const t = (clave: string) => traducir(config.idioma, clave);
+  const t = (clave: string, vars?: Record<string, string | number>) =>
+    traducir(config.idioma, clave, vars);
 
   const [cargando, setCargando] = useState(true);
   const [seccion, setSeccion] = useState<Seccion>("inicio");
@@ -107,33 +117,34 @@ export default function App() {
     };
   }, [actividadAbierta, seccion, vistaPreviaPDF, editorActividad.abierta, editorRegistro.abierta, editorMeta.abierta]);
 
-  /* Recordatorio diario */
+  /* Recordatorios: se programan con el plugin nativo (sobreviven con la app cerrada) */
   useEffect(() => {
-    if (!config.notificaciones) return;
-    const revisar = () => {
-      const ahora = new Date();
-      const [hh, mm] = config.horaRecordatorio.split(":").map((n) => Number(n) || 0);
-      const objetivo = new Date();
-      objetivo.setHours(hh, mm, 0, 0);
-      if (ahora < objetivo) return;
-      const clave = `kairos.aviso.${hoyISO()}`;
-      if (localStorage.getItem(clave)) return;
-      if (datos.registros.some((r) => r.fecha === hoyISO())) return;
-      const cuerpo = t("Recuerda registrar tus horas de hoy.");
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        new Notification(NOMBRE_APP, { body: cuerpo, icon: "./logo-icono.svg" });
-      } else {
-        avisar(cuerpo, "info");
-      }
-      localStorage.setItem(clave, "1");
-    };
-    const primera = window.setTimeout(revisar, 2500);
-    const intervalo = window.setInterval(revisar, 60000);
-    return () => {
-      window.clearTimeout(primera);
-      window.clearInterval(intervalo);
-    };
-  }, [config.notificaciones, config.horaRecordatorio, datos.registros]);
+    const cuerpo = traducir(config.idioma, "Recuerda registrar tus horas de hoy.");
+    void programarRecordatorios(config, NOMBRE_APP, cuerpo);
+  }, [
+    config.notificaciones,
+    config.modoRecordatorio,
+    config.diasRecordatorio,
+    config.fechaRecordatorio,
+    config.horaRecordatorio,
+    config.idioma,
+    config,
+  ]);
+
+  /* Si el usuario instaló una versión nueva por su cuenta, reactivar los avisos */
+  useEffect(() => {
+    if (registrarVersionVista()) {
+      api.actualizarConfig({ avisarActualizaciones: true });
+    }
+  }, []);
+
+  /* Chequeo automático de actualizaciones: una vez al día y solo si hay internet */
+  useEffect(() => {
+    if (!config.avisarActualizaciones) return;
+    if (!chequeoDiarioPendiente()) return;
+    marcarChequeo();
+    void buscarActualizacionApp(false);
+  }, [config.avisarActualizaciones]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -155,6 +166,34 @@ export default function App() {
   );
 
   /* ---------------------------- acciones ---------------------------- */
+
+  /** Busca actualizaciones en GitHub. manual=true → siempre consulta (botón). */
+  async function buscarActualizacionApp(manual: boolean) {
+    const res = await buscarActualizacion();
+    if (res.fallo) {
+      if (manual) avisar(t("No se pudo buscar. Revisa tu conexión."), "error");
+      return;
+    }
+    if (!res.hay) {
+      if (manual) avisar(t("Estás en la última versión"));
+      return;
+    }
+    /* En el chequeo automático no insistimos con la versión que rechazó. */
+    if (!manual && versionRechazada(res.version || "")) return;
+    const ok = await confirmar({
+      titulo: t("Nueva versión disponible"),
+      mensaje: t("Hay una versión nueva de Kairós ({v}). ¿Descargar e instalarla ahora?", {
+        v: res.version || "",
+      }),
+      textoOk: t("Sí"),
+      textoCancelar: t("No"),
+    });
+    if (!ok) {
+      marcarRechazada(res.version || "");
+      return;
+    }
+    if (res.url) await abrirDescarga(res.url);
+  }
 
   function guardarActividad(borrador: BorradorActividad) {
     if (editorActividad.id) {
@@ -349,6 +388,7 @@ export default function App() {
               onCargarEjemplo={() => void cargarEjemplo()}
               onAyuda={() => setSeccion("ayuda")}
               onAcerca={() => setSeccion("acerca")}
+              onBuscarActualizaciones={() => void buscarActualizacionApp(true)}
             />
           )}
 
