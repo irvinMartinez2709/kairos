@@ -1,0 +1,13 @@
+# Dependencias y compilación
+web/node_modules/
+web/dist/
+web/.vite/
+
+# Proyecto Android generado por el CI (no se versiona)
+web/android/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
